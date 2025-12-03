@@ -72,7 +72,7 @@ It serves as a simple, intuitive heuristic system. Many news categories do corre
 - Struggles with short headlines lacking explicit signals
 
 #### Baseline Implementation (excerpt)
-    ```python
+    ``python
     def baseline_predict(text):
         text = text.lower()
         for label, keywords in keyword_map.items():
