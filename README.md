@@ -79,6 +79,7 @@ It serves as a simple, intuitive heuristic system. Many news categories do corre
            if any(k in text for k in keywords):
                return label
        return 0  # fallback: "World"
+   ```
 
 ### 3.2 AI Pipeline
 
