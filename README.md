@@ -117,9 +117,16 @@ This allows it to correctly classify headlines that do not contain any obvious t
 
 3. **Classifier Training**
    The embeddings are fed into logistic regression:
+   ```python
+   clf = LogisticRegression(max_iter=3000)
+   clf.fit(X_train_embed, y_train)
 
-4. **Prediction**
+5. **Prediction**
    Test headlines are embedded and classified:
+   ```python
+   X_test_embed = model.encode(X_test)
+   y_pred = clf.predict(X_test_embed)
+
 
 #### Why This Pipeline?
 
