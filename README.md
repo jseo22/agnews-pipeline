@@ -1,157 +1,289 @@
-# Mini AI Pipeline Project — AG News Headline Classification
+# CAS2105 Homework 6: AG News Headline Classification
+**Author:** Jein Seo (2022148090)
+
+---
 
 ## 1. Introduction
 
-This project builds a small AI pipeline for **news headline classification** using the AG News dataset. The task is a **4-class classification problem**:
+This project implements a complete but lightweight **AI pipeline** for the **AG News headline classification** task. The objective is to classify short news headlines into one of four categories:
 
 - **World**
 - **Sports**
 - **Business**
 - **Sci/Tech**
 
-The pipeline includes:
+Rather than training large, resource-intensive models, this assignment focuses on comparing:
 
-1. A **naïve keyword-based baseline**
-2. A **semantic embedding model using SentenceTransformers**
-3. Evaluation and comparison of both approaches
+1. A **naïve keyword-matching baseline**, and  
+2. A **semantic embedding model** (MiniLM) combined with a logistic regression classifier.
 
-The goal is to understand the AI development workflow and demonstrate how pre-trained embeddings outperform simple heuristics.
+News headlines are short and often ambiguous. Relying solely on keyword heuristics frequently leads to misclassification, making this task an excellent showcase of the power of semantic embeddings.
 
 ---
 
-## 2. Dataset
+## 2. Task Definition
 
-- **Dataset:** AG News (Hugging Face)
-- **Split:**
-  - Train: 3,000 headlines (750 per class)
-  - Test: 1,000 headlines (balanced across 4 classes)
-- **Features:**
-  - `text` — news headline
-  - `label` — category index (0–3)
+### Task
+Predict the topic category of a single English news headline.
 
-### Preprocessing
+### Formal Definition
+- **Input:** A raw headline string  
+- **Output:** A label *y* ∈ {0, 1, 2, 3}  
+- **Goal:** Learn a function *f(x) → y* that generalizes well to unseen headlines.
 
-- Lowercasing
-- Removing line breaks
-- Normalizing whitespace
+### Success Criteria
+We consider the project successful if:
 
-No aggressive normalization was used.
+- The AI pipeline achieves **substantially higher accuracy** than the baseline.
+- It improves the **macro F1-score**, which treats all four classes equally.
+
+### Motivation
+News headline classification is widely used in:
+
+- Recommendation algorithms  
+- Topic-aware ranking  
+- News aggregation  
+- Content moderation and filtering  
+
+Headlines require semantic interpretation, making this a suitable domain to compare naïve rules against embedding-based learning.
 
 ---
 
 ## 3. Methods
 
-### 3.1 Baseline — Keyword Matching
+We evaluate two approaches:
 
-A simple keyword lookup for domain-specific words:
-- “government”, “president” → World  
-- “team”, “win”, “league” → Sports  
-- “market”, “stocks”, “profit” → Business  
-- “software”, “technology”, “devices” → Sci/Tech  
-
-**Strengths**
-- Simple, cheap, interpretable  
-- Works for obvious cases  
-
-**Weaknesses**
-- Cannot understand meaning  
-- Fails when keywords overlap across domains  
-- Misclassifies headlines with ambiguous vocabulary  
+1. **Naïve keyword-based baseline**
+2. **MiniLM-based semantic embedding pipeline**
 
 ---
 
-### 3.2 Embedding Pipeline
+### 3.1 Naïve Baseline
 
-Model:
-- **Encoder:** `all-MiniLM-L6-v2` (SentenceTransformers)
-- **Representation:** 384-dimensional sentence embedding
-- **Classifier:** Logistic Regression
+The baseline uses a keyword dictionary for each class. It scans the headline for predefined keywords and predicts the corresponding class. If no keyword is detected, it defaults to **World**.
 
-Pipeline steps:
+#### Why This Baseline?
+It serves as a simple, intuitive heuristic system. Many news categories do correlate with distinctive words (e.g., “tournament” → Sports).
 
-1. Preprocess text  
-2. Convert headline → dense embedding  
-3. Train classifier on embeddings  
-4. Predict labels on new text  
+#### Limitations
+- Fails when headlines contain **ambiguous** terms  
+- Confuses overlapping terminology (e.g., “Tech company reports earnings” → keyword "Tech" incorrectly predicts Sci/Tech)  
+- Cannot interpret meaning  
+- Struggles with short headlines lacking explicit signals
 
-This pipeline captures semantic relationships between words, enabling far better generalization.
+#### Baseline Implementation (excerpt)
+```python
+def baseline_predict(text):
+    text = text.lower()
+    for label, keywords in keyword_map.items():
+        if any(k in text for k in keywords):
+            return label
+    return 0  # fallback: "World"
+
+### 3.2 AI Pipeline
+
+The improved AI pipeline uses **pre-trained semantic embeddings** and a lightweight **logistic regression classifier** to perform news topic classification. Unlike the baseline, which relies only on literal keyword matching, the embedding pipeline captures the deeper semantic meaning of each headline.
+
+This allows it to correctly classify headlines that do not contain any obvious topic-specific keywords or contain ambiguous words used differently across topics.
 
 ---
 
-## 4. Results
+#### Models Used
 
-### 4.1 Quantitative Results
+- **Embedding model:** `all-MiniLM-L6-v2` from SentenceTransformers  
+  - Produces 384-dimensional embeddings  
+  - Lightweight and fast (CPU-friendly)  
+  - Trained using deep self-attention distillation (MiniLM)
 
-| Model | Accuracy | Macro F1 |
-|-------|----------|----------|
-| Keyword Baseline | **0.537** | **0.524** |
-| Embedding Pipeline | **0.873** | **0.874** |
+- **Classifier:** Logistic Regression (`scikit-learn`)
+  - Works well with dense embeddings  
+  - Fast to train  
+  - Provides strong linear separation of semantic clusters  
+
+---
+
+#### Pipeline Stages
+
+1. **Text Preprocessing**
+   - Lowercasing
+   - Removing extra whitespace  
+   *No stemming or tokenization needed—the embedding model handles raw text well.*
+
+2. **Embedding**
+   Each headline string is passed through MiniLM to generate a **semantic vector**.
+   ```python
+   model = SentenceTransformer("all-MiniLM-L6-v2")
+   X_train_embed = model.encode(X_train)
+
+3. **Classifier Training**
+   The embeddings are fed into logistic regression:
+
+4. **Prediction**
+   Test headlines are embedded and classified:
+
+#### Why This Pipeline?
+
+The semantic embedding pipeline was chosen because it addresses nearly all limitations of the naïve keyword baseline. Headlines are often short, metaphorical, and lacking explicit keywords. Therefore, a system that understands semantic meaning—rather than surface-level word matching—is necessary.
+
+MiniLM embeddings capture deeper contextual relationships such as:
+
+- Financial terminology → **Business**  
+- Scientific discovery wording → **Sci/Tech**  
+- International conflict cues → **World**  
+- Competition, scores, team references → **Sports**
+
+Because the embeddings are high-dimensional representations of meaning, the classifier can easily separate classes in this semantic space. This makes the pipeline robust to variations in phrasing, vocabulary choice, and ambiguity.
+
+Additionally, MiniLM is extremely lightweight, allowing the entire pipeline to run smoothly on CPU with no fine-tuning, making it ideal for a small student project.
+
+---
+
+## 4. Experiments
+
+### 4.1 Dataset
+
+The experiments use the **AG News** dataset from Hugging Face. This dataset contains news headlines categorized into four balanced classes:
+
+1. **World**
+2. **Sports**
+3. **Business**
+4. **Sci/Tech**
+
+To keep the computation efficient:
+
+- **Train set:** 3,000 examples (750 per class)  
+- **Test set:** 1,000 examples (250 per class)
+
+This subset size is large enough to demonstrate meaningful improvements between models while still being fast to embed and train on a CPU.
+
+#### Preprocessing
+Minimal text preprocessing was applied:
+
+- lowercasing  
+- whitespace normalization  
+
+No stemming, lemmatization, or stopword removal was used. This ensures the embedding model receives intact linguistic context.
+
+---
+
+### 4.2 Metrics
+
+Two evaluation metrics were used:
+
+- **Accuracy:** overall proportion of correct predictions  
+- **Macro F1-score:** average of F1-scores across all four classes, treating each class equally  
+
+Macro F1 is essential when analyzing multi-class settings, especially when some topics have subtle distinguishing features.
+
+---
+
+### 4.3 Results
+
+| Method | Accuracy | Macro F1 |
+|--------|----------|----------|
+| **Naïve Baseline** | 0.537 | 0.524 |
+| **Embedding Pipeline (MiniLM)** | 0.873 | 0.874 |
 
 ### Interpretation
-The embedding system improves performance by:
 
-- **+33.6% accuracy**
-- **+35% macro F1**
+The embedding pipeline dramatically outperforms the baseline, improving:
 
-Across all classes, embedding-based classification is significantly more robust:
+- **Accuracy by 33.6 percentage points**
+- **Macro F1 by 35 percentage points**
 
-- **Sports** improved from F1 = 0.65 → 0.96  
-- **Sci/Tech** improved from F1 = 0.42 → 0.84  
-- **Business** improved from F1 = 0.46 → 0.81  
+This demonstrates that:
 
----
+- Keyword-based heuristics are not reliable for semantic tasks.  
+- MiniLM embeddings form well-separated clusters for each topic.  
+- Even a simple linear classifier (logistic regression) is sufficient when the representation is strong.
 
-## 4.2 Qualitative Examples
-
-These real test cases highlight the difference between the baseline and the embedding model.
+The baseline frequently misclassifies Business vs. Sci/Tech headlines due to shared terminology. The embedding model resolves this ambiguity by understanding **context** instead of keyword co-occurrence.
 
 ---
 
-### **Example 1**
-**Text:**  
-“General Mills goes whole grains… General Mills announced plans… to start using healthier whole grains…”
+### 4.4 Qualitative Examples
 
-**True label:** Business  
-**Baseline:** World  
-**Embedding:** Business (correct)
+Below are examples where the embedding model succeeds while the baseline fails.
 
-**Reasoning:**  
-The baseline triggers on words like “General,” “plans,” and “announced,” which appear frequently in World news. The embedding model correctly identifies this as a corporate product announcement.
+#### Example 1  
+**Headline:**  
+*“General Mills goes whole grains…”*
 
----
+- **True Label:** Business  
+- **Baseline Prediction:** World  
+- **Embedding Prediction:** Business ✔️  
 
-### **Example 2**
-**Text:**  
-“Profit Plunges at International Game Tech… said profit fell 50 percent due to a tax adjustment.”
-
-**True label:** Business  
-**Baseline:** Sci/Tech  
-**Embedding:** Business (correct)
-
-**Reasoning:**  
-The baseline fixates on “Tech,” incorrectly placing it into Sci/Tech.  
-Embeddings understand the headline describes **financial performance**, not technology.
+**Explanation:**  
+The headline lacks explicit business-related keywords.  
+The baseline misclassifies it due to missing signals, whereas the embedding model infers the **corporate/product** context.
 
 ---
 
-## 5. Reflection
+#### Example 2  
+**Headline:**  
+*“Profit plunges at International Game Tech…”*
 
-This project demonstrates:
+- **True Label:** Business  
+- **Baseline Prediction:** Sci/Tech  
+- **Embedding Prediction:** Business ✔️  
 
-- Keyword baselines can capture obvious patterns but fail on semantic nuance.
-- Embeddings dramatically improve classification through contextual understanding.
-- Real-world text classification requires models that go beyond surface forms.
-- Even lightweight models (MiniLM) can achieve high accuracy with simple pipelines.
-
-### Future improvements
-- Fine-tuning a transformer model (e.g., DistilBERT)
-- Larger training samples (10k+ headlines)
-- Confusion-matrix-driven error analysis
-- Class-specific threshold tuning
+**Explanation:**  
+The baseline is misled by the keyword **“Tech”**.  
+The embedding model recognizes the headline as a **financial performance report**, not science/technology news.
 
 ---
 
-## 6. Conclusion
+## 5. Reflection and Limitations
 
-This mini pipeline project shows a clear, measurable improvement from naive heuristics to modern AI methods. Semantic embeddings provide a powerful yet accessible way to build robust text classifiers, even with limited data and simple modeling techniques.
+This project illustrates the stark difference between simplistic heuristics and modern embedding-based NLP methods.
 
+### What Worked Well
+
+- **MiniLM embeddings performed exceptionally**, even without fine-tuning  
+- Logistic regression trained in seconds and generalized well  
+- Balanced dataset made evaluation straightforward  
+- Semantic representations captured nuances of news topics  
+
+---
+
+### Challenges Encountered
+
+- Building a fair keyword list for the baseline was surprisingly difficult  
+- Business and Sci/Tech articles often overlap in terminology  
+- Ensuring proper labeling for ambiguous headlines required careful interpretation  
+- Some short headlines remained difficult even for the embedding model  
+
+---
+
+### Future Improvements
+
+With more time or computational resources, several enhancements could be explored:
+
+- Fine-tuning DistilBERT or MiniLM on the AG News dataset  
+- Increasing the training dataset from 3k to 10k+ samples  
+- Analyzing confusion matrices to isolate common failure modes  
+- Adding entity recognition (NER) as additional features  
+- Using non-linear classifiers like SVM or a small MLP  
+
+---
+
+## References
+## References
+
+[1] Zhang, X., Zhao, J., & LeCun, Y. (2015). **Character-level Convolutional Networks for Text Classification.** *Advances in Neural Information Processing Systems (NeurIPS).*  
+Paper: https://papers.nips.cc/paper_files/paper/2015/hash/250cf8b51c773f3f8dc8b4be867a9a02-Abstract.html  
+Dataset (AG News): https://huggingface.co/datasets/ag_news
+
+[2] Lhoest, Q., et al. (2021). **Datasets: A Community Library for Natural Language Processing.** *Hugging Face.*  
+Documentation: https://huggingface.co/docs/datasets  
+Library: https://github.com/huggingface/datasets
+
+[3] Reimers, N., & Gurevych, I. (2019). **Sentence-BERT: Sentence Embeddings using Siamese BERT-Networks.** *EMNLP.*  
+Paper: https://arxiv.org/abs/1908.10084  
+Model: https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2
+
+[4] Pedregosa, F., et al. (2011). **Scikit-learn: Machine Learning in Python.** *Journal of Machine Learning Research.*  
+Documentation: https://scikit-learn.org
+
+[5] Wang, W., et al. (2020). **MiniLM: Deep Self-Attention Distillation for Task-Agnostic NLP.** *ACL.*  
+Paper: https://arxiv.org/abs/2002.10957
