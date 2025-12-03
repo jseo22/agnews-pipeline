@@ -72,12 +72,13 @@ It serves as a simple, intuitive heuristic system. Many news categories do corre
 - Struggles with short headlines lacking explicit signals
 
 #### Baseline Implementation (excerpt)
-def baseline_predict(text):
-    text = text.lower()
-    for label, keywords in keyword_map.items():
-        if any(k in text for k in keywords):
-            return label
-    return 0  # fallback: "World"
+    ```python
+    def baseline_predict(text):
+        text = text.lower()
+        for label, keywords in keyword_map.items():
+            if any(k in text for k in keywords):
+                return label
+        return 0  # fallback: "World"
 
 ### 3.2 AI Pipeline
 
@@ -210,7 +211,7 @@ Below are examples where the embedding model succeeds while the baseline fails.
 
 - **True Label:** Business  
 - **Baseline Prediction:** World  
-- **Embedding Prediction:** Business ✔️  
+- **Embedding Prediction:** Business (Correct!)
 
 **Explanation:**  
 The headline lacks explicit business-related keywords.  
@@ -224,7 +225,7 @@ The baseline misclassifies it due to missing signals, whereas the embedding mode
 
 - **True Label:** Business  
 - **Baseline Prediction:** Sci/Tech  
-- **Embedding Prediction:** Business ✔️  
+- **Embedding Prediction:** Business (Correct!)
 
 **Explanation:**  
 The baseline is misled by the keyword **“Tech”**.  
@@ -266,7 +267,6 @@ With more time or computational resources, several enhancements could be explore
 
 ---
 
-## References
 ## References
 
 [1] Zhang, X., Zhao, J., & LeCun, Y. (2015). **Character-level Convolutional Networks for Text Classification.** *Advances in Neural Information Processing Systems (NeurIPS).*  
